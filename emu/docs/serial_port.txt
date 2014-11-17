@@ -1,0 +1,71 @@
+Emulación de Puerto Serie para Impresoras Fiscales
+==================================================
+
+La mayoría de las impresoras fiscales se comunican con la máquina que las
+controla a travez de un puerto serie disponible en la PC.
+
+Para el desarrollo de los controladores para impresoras fiscales es importante
+conocer que información de estaria llegando a la impresora si realmente
+estubiese ahí, para esto es posible conectarnos con algun software que nos
+permita ver lo que "sale" de puerto serie de nuestra maquina. Es importante 
+tambien para el desarrollo de algún emulador de impresoras fiscales  poder 
+escuchar en el puerto serie de nuestra maquina.
+
+Valiendonos de un software que nos permita redireccionar los puertos series
+podremos leer la información que se transfiere por esos puertos. En sistemas
+basado en Linux utilizaremos socat (http://www.dest-unreach.org/socat/) y en
+sistemas privativos Windows utilizaremos la herramienta libre
+com0com (http://com0com.sourceforge.net/)
+
+Se pueden presentar distintos esenarios en donde desearíamos escuchar el puerto
+serie. Los posibles esenarios son:
+
+* Linux => Linux:
+
+1º) Redirigimos un puerto serie a otro con socat, se podría hacer tambien con
+    os.openpty() en Python, pero lo dejamos para la proxima:
+    
+    $ socat PTY,link=/tmp/ttyS0,raw,echo=0,waitslave \
+        PTY,link=/tmp/my_ttyS0,raw,echo=0
+
+    Ya podemos conectar nuestro controlador de impresora fiscal a /tmp/ttyS0 y
+    escuchar en /tmp/my_ttyS0
+
+Nota: si utilizamos la opcion -v de socat podemos ver por stdout lo que se
+transmite de un lado hacia el otro, tambien podemos utilizar -x para verlo en
+formato hexadecimal, ver man socat(1).
+
+Nota2: cuando el "host" es GNU/Linux podemos utilizar
+    $ screen /tmp/my_ttyS0
+
+* Windows => Windows:
+
+# utilizar com0com
+
+* VirtualBox(Linux/Windows) => Linux:
+
+En este caso deseamos escuchar en el puerto serie que VirtualBox le proporciona
+al sistema "guest" y por el cual el controlador en el sistema "guest" enviaría
+información a la impresora fiscal.
+
+El procedimiento es: configurar VirtualBox para que redireccione el puerto
+serie hacia un socket de unix en la maquina "host" y luego redireccionar el
+socket de unix hacia una PTY (pseudo-terminal) donde escucharemos nosotros.
+
+1º) Configuramos VirtualBox: en la ventana de configuración de la VM que
+    utilizaremos habilitamos un puerto serie, en el modo de puerto colocamos
+    "pipe" y colocamos el archivo de socket de unix, ej: /tmp/su_puerto_virtual
+
+2º) Una vez que arrancamos la máquina virtual colocamos en una consola:
+    $ socat UNIX-CONNECT:/tmp/su_puerto_vitual \
+	PTY,link=/tmp/pty_puerto_virtual,raw,echo=0
+
+3º) Ya estamos en codiciones de comunicarnos con el puerto serie del "guest" a
+    travez de nuestro nuevo puerto serie en el "host" /tmp/pty_puerto_virtual.
+
+Nota: En caso de que el sistema "guest" sea Windows y que su instalación se haya
+realizado con anterioridad a la configuracion del puerto serie de la maquina
+virtual (/tmp/su_puerto_serie) se deberá instalar el controlador para el puerto
+serie en el "guest" a travez del instalador de Windows.
+
+* VirtialBox(Linux/Windows) => Windows:
